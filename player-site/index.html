@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kitsune Watch Player</title>
+<style>
+:root{--bg:#0f1115;--panel:#15181d;--card:#1c2026;--line:#2b323c;--fg:#fff;--muted:#8d98ab;--accent:#59d57a;--on-accent:#06130a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--fg)}
+header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--line)}
+.logo{font-size:22px;font-weight:bold;cursor:pointer}.logo span{color:var(--accent)}
+input[type=text]{background:var(--card);border:1px solid var(--line);color:var(--fg);padding:8px 14px;border-radius:4px;width:250px;max-width:100%}
+.hero{position:relative;min-height:240px;background-size:cover;background-position:center;display:flex;align-items:flex-end}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(to top,var(--bg) 5%,rgba(15,17,21,.55) 60%,rgba(15,17,21,.85))}
+.hero-inner{position:relative;padding:24px;max-width:1500px;width:100%;margin:0 auto}
+.hero h1{margin:0 0 6px;font-size:30px}.hero p{margin:0;color:#c9d1de;max-width:60ch;font-size:14px}
+.meta{color:var(--muted);font-size:12px;margin-top:8px}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 24px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px}
+video{width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;display:block}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button,.filebtn{background:var(--card);border:1px solid var(--line);color:var(--fg);padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px}
+button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:bold}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+.panel h3{margin:0 0 12px;font-size:15px;color:var(--accent)}
+.eps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:260px;overflow:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
+.card{cursor:pointer;background:var(--card);border-radius:4px;overflow:hidden;border:2px solid transparent}
+.card.sel{border-color:var(--accent)}
+.card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#222}
+.card div{padding:8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+h2{font-size:18px;color:var(--accent);margin:24px 0 12px}
+.empty{color:var(--muted);font-style:italic}
+@media(max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Kitsune<span>Watch</span></div>
+  <input type="text" id="q" placeholder="Search your library...">
+</header>
+
+<section class="hero" id="hero"><div class="hero-inner"><h1 id="hTitle">Loading…</h1><p id="hSyn"></p><div class="meta" id="hMeta"></div></div></section>
+
+<div class="wrap">
+  <main>
+    <video id="video" controls playsinline crossorigin="anonymous"></video>
+    <div class="bar">
+      <button id="prev">← Prev</button><button id="next">Next →</button>
+      <button id="auto" class="on">Autoplay next: on</button>
+      <label class="filebtn">Add my own video + banner
+        <input type="file" id="files" accept="video/*,image/*,.vtt" multiple hidden>
+      </label>
+      <span id="status" class="meta"></span>
+    </div>
+    <h2>Library</h2>
+    <div class="grid" id="grid"></div>
+  </main>
+  <aside>
+    <div class="panel"><h3>Episodes</h3><div class="eps" id="eps"></div></div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const video = $('video');
+let shows = [], cur = null, epIdx = 0, autoNext = true, hls = null;
+const pad = n => String(n).padStart(2, '0');
+const store = { get(k){try{return JSON.parse(localStorage.getItem(k))}catch{return null}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
+
+async function init() {
+  try { shows = (await (await fetch('library.json')).json()).shows; }
+  catch { shows = []; $('status').textContent = 'Could not load library.json (serve the Site folder over http).'; }
+  renderGrid();
+  if (shows.length) selectShow(shows[0].id);
+  else $('hTitle').textContent = 'Library is empty';
+}
+
+function renderGrid() {
+  const term = $('q').value.trim().toLowerCase(), g = $('grid');
+  g.innerHTML = '';
+  const list = shows.filter(s => s.title.toLowerCase().includes(term));
+  if (!list.length) { g.innerHTML = '<div class="empty">No matches.</div>'; return; }
+  list.forEach(s => {
+    const c = document.createElement('div');
+    c.className = 'card' + (cur && cur.id === s.id ? ' sel' : '');
+    const img = document.createElement('img'); img.src = s.poster || s.banner || ''; img.alt = s.title;
+    const t = document.createElement('div'); t.textContent = s.title;
+    c.append(img, t); c.onclick = () => selectShow(s.id); g.appendChild(c);
+  });
+}
+
+function selectShow(id) {
+  cur = shows.find(s => s.id === id); if (!cur) return;
+  $('hero').style.backgroundImage = cur.banner ? `url("${cur.banner}")` : 'none';
+  $('hTitle').textContent = cur.title;
+  $('hSyn').textContent = cur.synopsis || '';
+  $('hMeta').textContent = [cur.type, cur.year, cur.license].filter(Boolean).join(' • ');
+  const saved = store.get('ep:' + cur.id);
+  epIdx = saved && saved.i < cur.episodes.length ? saved.i : 0;
+  renderEps(); renderGrid(); play(epIdx, saved ? saved.t : 0);
+}
+
+function renderEps() {
+  const e = $('eps'); e.innerHTML = '';
+  cur.episodes.forEach((ep, i) => {
+    const b = document.createElement('button');
+    b.textContent = pad(ep.n); b.title = ep.title || '';
+    if (i === epIdx) b.className = 'on';
+    b.onclick = () => play(i, 0); e.appendChild(b);
+  });
+}
+
+function play(i, startAt) {
+  epIdx = i; const ep = cur.episodes[i];
+  if (hls) { hls.destroy(); hls = null; }
+  video.poster = cur.banner || cur.poster || '';
+  [...video.querySelectorAll('track')].forEach(t => t.remove());
+  if (ep.subs) { const t = document.createElement('track'); t.kind = 'subtitles'; t.label = 'English'; t.srclang = 'en'; t.src = ep.subs; t.default = true; video.appendChild(t); }
+  if (/\.m3u8($|\?)/.test(ep.src) && !video.canPlayType('application/vnd.apple.mpegurl') && window.Hls && Hls.isSupported()) {
+    hls = new Hls(); hls.loadSource(ep.src); hls.attachMedia(video);
+  } else video.src = ep.src;
+  if (startAt > 1) video.addEventListener('loadedmetadata', () => { video.currentTime = startAt; }, { once: true });
+  $('status').textContent = `${cur.title} — Episode ${pad(ep.n)}${ep.title ? ': ' + ep.title : ''}`;
+  renderEps(); store.set('ep:' + cur.id, { i, t: 0 });
+}
+
+video.addEventListener('timeupdate', () => { if (cur) store.set('ep:' + cur.id, { i: epIdx, t: Math.floor(video.currentTime) }); });
+video.addEventListener('ended', () => { if (autoNext && cur && epIdx + 1 < cur.episodes.length) play(epIdx + 1, 0); });
+video.addEventListener('error', () => { $('status').textContent = 'This video could not be loaded. Check the source URL in library.json.'; });
+$('prev').onclick = () => cur && epIdx > 0 && play(epIdx - 1, 0);
+$('next').onclick = () => cur && epIdx + 1 < cur.episodes.length && play(epIdx + 1, 0);
+$('auto').onclick = e => { autoNext = !autoNext; e.target.textContent = 'Autoplay next: ' + (autoNext ? 'on' : 'off'); e.target.classList.toggle('on', autoNext); };
+$('q').addEventListener('input', renderGrid);
+
+// Add local files: one video, optionally an image (banner) and a .vtt subtitle file. Lasts until the tab closes.
+$('files').addEventListener('change', e => {
+  const f = [...e.target.files];
+  const v = f.find(x => x.type.startsWith('video/')), img = f.find(x => x.type.startsWith('image/')), sub = f.find(x => x.name.endsWith('.vtt'));
+  if (!v) { $('status').textContent = 'Pick a video file (you can add an image and .vtt together).'; return; }
+  const name = v.name.replace(/\.[^.]+$/, '');
+  const url = img ? URL.createObjectURL(img) : '';
+  shows.unshift({ id: 'local-' + Date.now(), title: name, type: 'My file', license: 'Local file', poster: url, banner: url,
+    episodes: [{ n: 1, title: name, src: URL.createObjectURL(v), subs: sub ? URL.createObjectURL(sub) : '' }] });
+  renderGrid(); selectShow(shows[0].id); e.target.value = '';
+});
+init();
+</script>
+</body>
+</html>
