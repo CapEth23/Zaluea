@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HiAnime Interactive UI Player</title>
+<style>
+:root{--bg-main:#0f1115;--bg-sidebar:#15181d;--bg-card:#1c2026;--accent-green:#59d57a;--accent-blue:#40a0ff;--text-bright:#fff;--text-muted:#8490a6}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:var(--bg-main);color:var(--text-bright);margin:0}
+header{background:var(--bg-sidebar);padding:15px 30px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #232830;gap:15px;flex-wrap:wrap}
+.brand-section{display:flex;align-items:center;gap:30px}
+.logo{font-size:22px;font-weight:bold;cursor:pointer}
+.logo span{color:var(--accent-green)}
+nav a{color:var(--text-bright);text-decoration:none;font-size:15px;margin-right:20px;transition:color .2s}
+nav a:hover{color:var(--accent-green)}
+.search-container input{background:var(--bg-card);border:1px solid #2b323c;color:#fff;padding:8px 15px;border-radius:4px;width:250px;max-width:100%;outline:none;transition:border-color .2s}
+.search-container input:focus{border-color:var(--accent-green)}
+.view-section{display:none;max-width:1500px;margin:30px auto;padding:0 20px}
+.view-section.active-view{display:grid}
+#catalogView,#playerView{grid-template-columns:1fr 340px;gap:30px}
+h2.section-title{font-size:20px;color:var(--accent-green);margin:0 0 20px;border-left:4px solid var(--accent-green);padding-left:10px}
+.anime-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:20px}
+.no-results{color:var(--text-muted);grid-column:1/-1;padding:40px 0;font-style:italic}
+.anime-card{background:var(--bg-card);border-radius:4px;overflow:hidden;cursor:pointer;transition:transform .2s}
+.anime-card:hover{transform:translateY(-4px)}
+.poster-wrapper{position:relative;width:100%;padding-top:140%}
+.poster-wrapper img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.track-badges{position:absolute;bottom:8px;left:8px;display:flex;gap:4px;font-size:11px;font-weight:bold}
+.badge-cc{background:var(--accent-green);color:#000;padding:2px 5px;border-radius:2px}
+.badge-mic{background:var(--accent-blue);color:#fff;padding:2px 5px;border-radius:2px}
+.card-details{padding:10px}
+.anime-title{font-size:14px;margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.anime-meta{font-size:12px;color:var(--text-muted)}
+.sidebar-panel{background:var(--bg-sidebar);border-radius:6px;padding:20px;height:fit-content}
+.trending-item{display:flex;gap:15px;padding:12px 0;border-bottom:1px solid #232830;cursor:pointer}
+.trending-rank{font-size:20px;font-weight:bold;color:var(--text-muted);min-width:25px;align-self:center}
+.trending-thumb{width:50px;height:70px;object-fit:cover;border-radius:3px}
+.trending-info h4{margin:0 0 5px;font-size:14px;line-height:1.3}
+.video-player-container{background:#000;aspect-ratio:16/9;width:100%;border-radius:6px;display:flex;justify-content:center;align-items:center;border:1px solid #232830}
+.video-placeholder-text{color:var(--text-muted);text-align:center;padding:20px}
+.video-controls-bar{background:var(--bg-sidebar);padding:15px;border-radius:0 0 6px 6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.back-btn{background:none;border:0;color:var(--accent-green);cursor:pointer;font-size:14px}
+.server-selection-box{background:var(--bg-sidebar);padding:20px;border-radius:6px;margin-top:20px}
+.server-type-row{display:flex;align-items:center;gap:15px;margin-bottom:15px}
+.server-type-row:last-child{margin-bottom:0}
+.server-label{font-size:12px;font-weight:bold;text-transform:uppercase;min-width:50px;color:var(--text-muted)}
+.server-btn-list{display:flex;gap:10px;flex-wrap:wrap}
+.server-btn{background:var(--bg-card);border:1px solid #2b323c;color:var(--text-bright);padding:6px 15px;font-size:13px;border-radius:4px;cursor:pointer}
+.server-btn.active-server{background:var(--accent-green);color:#000;border-color:var(--accent-green);font-weight:bold}
+.episode-list-panel{background:var(--bg-sidebar);border-radius:6px;padding:20px;max-height:600px;overflow-y:auto}
+.episode-list-panel h3{margin:0;font-size:16px}
+.episode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:15px}
+.ep-btn{background:var(--bg-card);border:1px solid #2b323c;color:var(--text-bright);padding:10px 0;text-align:center;border-radius:4px;font-size:13px;cursor:pointer;transition:background .2s}
+.ep-btn.active-ep,.ep-btn:hover{background:var(--accent-green);color:#000;font-weight:bold;border-color:var(--accent-green)}
+@media(max-width:900px){#catalogView,#playerView{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand-section">
+    <div class="logo" onclick="switchView('catalog')">Hi<span>Anime</span></div>
+    <nav>
+      <a href="#" onclick="switchView('catalog');return false">Home</a>
+      <a href="#" onclick="return false">Movies</a>
+      <a href="#" onclick="return false">TV Series</a>
+    </nav>
+  </div>
+  <div class="search-container">
+    <input type="text" id="catalogSearch" placeholder="Filter anime instantly..." oninput="handleSearch(this.value)">
+  </div>
+</header>
+
+<!-- 1. CATALOG VIEW -->
+<div id="catalogView" class="view-section active-view">
+  <main>
+    <h2 class="section-title">Trending on HiAnime today</h2>
+    <div class="anime-grid" id="gridContainer"></div>
+  </main>
+  <aside>
+    <div class="sidebar-panel">
+      <h2 class="section-title" style="font-size:16px">Top Airing</h2>
+      <div id="sidebarContainer"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- 2. PLAYER VIEW -->
+<div id="playerView" class="view-section">
+  <main>
+    <div class="video-player-container">
+      <div class="video-placeholder-text">
+        <h3 id="playerVideoTitle" style="color:#fff;margin:0 0 5px">Anime Title</h3>
+        <p style="font-size:14px;margin:0" id="playerVideoEpisode">Playing Episode 01</p>
+        <p style="font-size:12px;margin:10px 0 0">[ HTML5 Video Sandbox Stream Layer Mockup ]</p>
+      </div>
+    </div>
+    <div class="video-controls-bar">
+      <span id="playerMetaTitle">Loading Details...</span>
+      <button class="back-btn" onclick="switchView('catalog')">← Back to Catalog</button>
+    </div>
+    <div class="server-selection-box">
+      <div class="server-type-row">
+        <span class="server-label">Sub:</span>
+        <div class="server-btn-list" data-group="sub">
+          <button class="server-btn active-server">HD-1</button>
+          <button class="server-btn">HD-2</button>
+          <button class="server-btn">StreamSB</button>
+        </div>
+      </div>
+      <div class="server-type-row">
+        <span class="server-label">Dub:</span>
+        <div class="server-btn-list" data-group="dub">
+          <button class="server-btn">MegaCloud</button>
+          <button class="server-btn">Dual-HD</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <aside>
+    <div class="episode-list-panel">
+      <h3>List of Episodes</h3>
+      <div class="episode-grid" id="episodeContainer"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// Inline SVG posters (no external image dependency)
+function poster(label, hue) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="280" height="392">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(${hue},60%,38%)"/><stop offset="1" stop-color="hsl(${(hue + 60) % 360},55%,16%)"/>
+    </linearGradient></defs>
+    <rect width="280" height="392" fill="url(#g)"/>
+    <text x="140" y="206" font-family="Arial" font-size="64" font-weight="bold" fill="rgba(255,255,255,.85)" text-anchor="middle">${label}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+const animeData = [
+  { id: 1, title: "ONE PIECE", year: 1999, type: "TV", cc: 1180, mic: 1157, img: poster("OP", 200), totalEp: 24 },
+  { id: 2, title: "Case Closed (Detective Conan)", year: 1996, type: "TV", cc: 1218, mic: 123, img: poster("DC", 0), totalEp: 12 },
+  { id: 3, title: "Mastering Magic in Another World", year: 2025, type: "TV", cc: 12, mic: 0, img: poster("MM", 270), totalEp: 12 },
+  { id: 4, title: "Super Dragon Ball Heroes", year: 2018, type: "ONA", cc: 20, mic: 20, img: poster("DB", 30), totalEp: 6 },
+  { id: 5, title: "Pokémon Horizons", year: 2023, type: "TV", cc: 155, mic: 136, img: poster("PH", 120), totalEp: 48 }
+];
+
+let activeAnime = null;
+let activeEpisodeNum = 1;
+const pad = n => (n < 10 ? '0' + n : String(n));
+
+// Build DOM with textContent where user/data text is involved (avoids HTML injection from search input)
+function renderCatalog(filterTerm = "") {
+  const grid = document.getElementById('gridContainer');
+  grid.innerHTML = '';
+  const term = filterTerm.trim().toLowerCase();
+  const filtered = animeData.filter(a => a.title.toLowerCase().includes(term));
+
+  if (filtered.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'no-results';
+    empty.textContent = `No matches found for "${filterTerm}"`;
+    grid.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(anime => {
+    const card = document.createElement('div');
+    card.className = 'anime-card';
+    card.onclick = () => loadVideoPlayer(anime.id);
+    card.innerHTML = `
+      <div class="poster-wrapper">
+        <img src="${anime.img}" alt="">
+        <div class="track-badges">
+          <span class="badge-cc">CC: ${anime.cc}</span>
+          ${anime.mic > 0 ? `<span class="badge-mic">Mic: ${anime.mic}</span>` : ''}
+        </div>
+      </div>
+      <div class="card-details">
+        <h4 class="anime-title"></h4>
+        <div class="anime-meta">${anime.type} &bull; ${anime.year}</div>
+      </div>`;
+    card.querySelector('.anime-title').textContent = anime.title;
+    card.querySelector('img').alt = anime.title;
+    grid.appendChild(card);
+  });
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebarContainer');
+  sidebar.innerHTML = '';
+  animeData.slice(0, 3).forEach((anime, idx) => {
+    const row = document.createElement('div');
+    row.className = 'trending-item';
+    row.onclick = () => loadVideoPlayer(anime.id);
+    row.innerHTML = `
+      <div class="trending-rank">0${idx + 1}</div>
+      <img class="trending-thumb" src="${anime.img}" alt="">
+      <div class="trending-info">
+        <h4></h4>
+        <div class="anime-meta">${anime.type} (${anime.year})</div>
+      </div>`;
+    row.querySelector('h4').textContent = anime.title;
+    sidebar.appendChild(row);
+  });
+}
+
+function switchView(viewName) {
+  const catalog = document.getElementById('catalogView');
+  const player = document.getElementById('playerView');
+  const search = document.getElementById('catalogSearch');
+  catalog.classList.toggle('active-view', viewName === 'catalog');
+  player.classList.toggle('active-view', viewName === 'player');
+  search.style.visibility = viewName === 'catalog' ? 'visible' : 'hidden';
+  window.scrollTo(0, 0);
+}
+
+function handleSearch(val) { renderCatalog(val); }
+
+function loadVideoPlayer(id) {
+  const anime = animeData.find(a => a.id === id);
+  if (!anime) return;
+  activeAnime = anime;
+  activeEpisodeNum = 1;
+  document.getElementById('playerVideoTitle').textContent = anime.title;
+  document.getElementById('playerMetaTitle').textContent = `${anime.title} — ${anime.type}`;
+  renderEpisodes(anime.totalEp);
+  selectEpisode(1);
+  switchView('player');
+}
+
+function renderEpisodes(count) {
+  const container = document.getElementById('episodeContainer');
+  container.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const btn = document.createElement('div');
+    btn.className = 'ep-btn' + (i === activeEpisodeNum ? ' active-ep' : '');
+    btn.textContent = pad(i);
+    btn.id = `ep-btn-${i}`;
+    btn.onclick = () => selectEpisode(i);
+    container.appendChild(btn);
+  }
+}
+
+function selectEpisode(num) {
+  const prev = document.querySelector('.active-ep');
+  if (prev) prev.classList.remove('active-ep');
+  activeEpisodeNum = num;
+  const target = document.getElementById(`ep-btn-${num}`);
+  if (target) target.classList.add('active-ep');
+  document.getElementById('playerVideoEpisode').textContent = `Playing Episode ${pad(num)}`;
+}
+
+// Server buttons: one active across both Sub and Dub rows
+document.querySelectorAll('.server-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active-server'));
+    btn.classList.add('active-server');
+  });
+});
+
+renderCatalog();
+renderSidebar();
+</script>
+</body>
+</html>
