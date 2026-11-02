@@ -1,0 +1,33 @@
+{
+  "note": "Edit this file to add your own shows. Only list video you have the rights to play. 'banner' is the wide hero image, 'poster' the tall card image, 'src' a .mp4 or .m3u8 URL (or a path inside Site/). 'subs' is an optional .vtt file.",
+  "shows": [
+    {
+      "id": "bbb", "title": "Big Buck Bunny", "year": 2008, "type": "Short", "license": "CC BY 3.0, Blender Foundation",
+      "synopsis": "A giant rabbit takes revenge on three bullying rodents.",
+      "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+      "banner": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+      "episodes": [{ "n": 1, "title": "Full film", "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }]
+    },
+    {
+      "id": "sintel", "title": "Sintel", "year": 2010, "type": "Short", "license": "CC BY 3.0, Blender Foundation",
+      "synopsis": "A young woman searches for the dragon she once befriended.",
+      "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg",
+      "banner": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg",
+      "episodes": [{ "n": 1, "title": "Full film", "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4" }]
+    },
+    {
+      "id": "ed", "title": "Elephants Dream", "year": 2006, "type": "Short", "license": "CC BY 2.5, Blender Foundation",
+      "synopsis": "Two men explore a strange machine world.",
+      "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+      "banner": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+      "episodes": [{ "n": 1, "title": "Full film", "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" }]
+    },
+    {
+      "id": "tos", "title": "Tears of Steel", "year": 2012, "type": "Short", "license": "CC BY 3.0, Blender Foundation",
+      "synopsis": "Scientists try to save the world from killer robots.",
+      "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg",
+      "banner": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg",
+      "episodes": [{ "n": 1, "title": "Full film", "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4" }]
+    }
+  ]
+}
